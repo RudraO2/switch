@@ -51,6 +51,7 @@ from switch_core.bridges.agent.api.schemas import (
     RegisterKnownAgentRequest,
     ReportEventsRequest,
     RuntimeStateRequest,
+    EditMessageRequest,
     SendMessageRequest,
     StatusRequest,
     TypingRequest,
@@ -504,6 +505,35 @@ async def send_message(
         raise HTTPException(status_code=403, detail=str(e)) from e
 
     return {"ok": True, "event_id": event_id}
+
+
+@router.post("/{agent_id}/messages/{event_id}/edit")
+async def edit_message(
+    agent_id: str,
+    event_id: str,
+    req: EditMessageRequest,
+    agent: Annotated[Agent, Depends(get_agent_from_scope)],
+    protocol: Annotated[AgentCore, Depends(get_protocol)],
+) -> dict[str, object]:
+    """Edit a message this agent posted, where it was relayed to a platform.
+
+    `edited` is false when the message never reached a platform (an internal
+    room, or a post the bridge did not record); Switch's own room history
+    keeps the message as it was sent.
+    """
+    try:
+        edited = await protocol.edit_message(
+            agent.id, req.room_id, event_id, req.content
+        )
+    except BudgetExceeded as e:
+        raise HTTPException(status_code=429, detail=str(e)) from e
+    except GuardrailBlockedError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e)) from e
+    return {"ok": True, "edited": edited}
 
 
 @router.get("/{agent_id}/rooms/{room_id}/media", response_model=None)

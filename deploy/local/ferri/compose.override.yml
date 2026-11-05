@@ -1,0 +1,6 @@
+# Run the standalone stack with Ferri's core image:
+#   Build first: docker build -f deploy/local/ferri/Dockerfile --build-arg BASE=ghcr.io/sandbox-quantum/dev/switch-core:${SWITCH_VERSION} -t ferri/switch-core:local .
+#   docker compose -f deploy/local/standalone-docker-compose.yml -f deploy/local/ferri/compose.override.yml --profile collab --profile gateway --project-directory . up -d switch
+services:
+  switch:
+    image: ferri/switch-core:local

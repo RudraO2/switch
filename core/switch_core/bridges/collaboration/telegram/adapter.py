@@ -1366,6 +1366,18 @@ class TelegramAdapter(PlatformAdapter):
             thread_root_id,
         )
 
+    async def edit_agent_message(
+        self, channel_id: str, message_ref: str, sender_name: str, content: str
+    ) -> None:
+        """An agent's post carries the agent's name at its head (see
+        `send_message`), so the edited body is attributed the same way."""
+        agent = await self.agent_rendering(sender_name)
+        await self.update_message(
+            channel_id,
+            message_ref,
+            self._attribute(sender_name, agent.body_label, content),
+        )
+
     async def update_message(
         self, channel_id: str, message_ref: str, new_content: str
     ) -> None:
