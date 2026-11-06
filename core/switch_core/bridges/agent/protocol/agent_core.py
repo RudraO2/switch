@@ -2291,6 +2291,47 @@ class AgentCore:
             raise ValueError(f"Agent not found: {agent_id}")
         await collaboration_core.handle_outbound_typing(room.id, agent.name, is_typing)
 
+    async def edit_message(
+        self, agent_id: str, room_id: str, event_id: str, content: str
+    ) -> bool:
+        """Edit a message this agent posted, on the platform it reached.
+
+        Only the agent's own messages: the event must be in the room and sent
+        by this agent's client. The new text goes through Switch Trust like
+        any post. Returns False when the room has no collaboration bridge or
+        the message never reached the platform; the room's history keeps the
+        message as it was first sent.
+
+        Raises ValueError when the event is not in the room or the client is
+        not running, PermissionError when the event is someone else's, and
+        GuardrailBlockedError when Switch Trust blocks the new text.
+        """
+        room = await self.require_room_poster(agent_id, room_id)
+        client = self.client_lifecycle.get_by_agent_id(agent_id)
+        if client is None or client.transport is None:
+            raise ValueError("Agent client not running")
+        event = await client.transport.get_event(room.transport_room_id, event_id)
+        if event is None:
+            raise ValueError(f"event not found in room: {event_id}")
+        if getattr(event, "sender_id", None) != client.transport_user_id:
+            raise PermissionError("an agent can only edit its own messages")
+        content, pending_alert = await self._enforce_trust(room, content, None, client)
+        if room.bridge_id is None:
+            return False
+        collaboration_core = self.collab_lifecycle.get(room.bridge_id)
+        if collaboration_core is None:
+            raise ValueError(
+                f"Collaboration bridge {room.bridge_id} for room {room.id} "
+                "is not running"
+            )
+        edited = await collaboration_core.handle_outbound_edit(
+            room.transport_room_id, event_id, client.display_name, content
+        )
+        if pending_alert is not None:
+            annotation, outcome = pending_alert
+            await self._post_trust_alert_notice(room, event_id, annotation, outcome)
+        return edited
+
     async def update_status(self, agent_id: str, room_id: str, detail: str) -> None:
         """Send a status message to a room.
 

@@ -1215,6 +1215,19 @@ class PlatformAdapter(ABC):
         self, channel_id: str, message_ref: str, new_content: str
     ) -> None: ...
 
+    async def edit_agent_message(
+        self, channel_id: str, message_ref: str, sender_name: str, content: str
+    ) -> None:
+        """Redraw an agent's own post with new, already translated text.
+
+        `update_message` replaces the body as it stands. That is the whole of
+        it on a platform that keeps the agent's name outside the body (a
+        Mattermost bot, a Slack username, a Discord webhook). A platform that
+        writes the name into the body, like Telegram, overrides this so the
+        edited post still says who wrote it.
+        """
+        await self.update_message(channel_id, message_ref, content)
+
     async def post_rich(
         self,
         channel_id: str,

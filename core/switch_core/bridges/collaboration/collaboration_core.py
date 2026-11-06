@@ -2950,6 +2950,41 @@ class CollaborationCore:
 
     # ── Protection sync ──────────────────────────────────────────────────────
 
+    async def handle_outbound_edit(
+        self,
+        room_id: str,
+        transport_event_id: str,
+        sender_name: str,
+        new_body: str,
+    ) -> bool:
+        """Redraw the platform post a room message became, with new text.
+
+        Returns False when the message never reached this platform (no channel
+        for the room, or no post recorded for the event), so the caller can
+        say so instead of reporting an edit nobody will see. The room's own
+        history keeps the message as it was sent.
+        """
+        channel_id = await self._channel_for_room(room_id)
+        if channel_id is None:
+            return False
+        async with tenant_session(
+            self._session_factory, self._bridge_tenant_id
+        ) as session:
+            mapping = await self._bridge_message_map_store.get_by_transport_event_id(
+                session, self._bridge_id, transport_event_id
+            )
+        if mapping is None or mapping.external_post_id is None:
+            return False
+        mapped_room_id, _ = self._channel_to_room[channel_id]
+        with tenant_scope(await self._room_tenant(mapped_room_id)):
+            await self._adapter.edit_agent_message(
+                mapping.external_channel_id,
+                mapping.external_post_id,
+                sender_name,
+                self._adapter.translate_outbound(new_body),
+            )
+        return True
+
     # TODO: use this when protection setup is done
     async def handle_protection_verdict(
         self, event_id: str, new_content: str | None

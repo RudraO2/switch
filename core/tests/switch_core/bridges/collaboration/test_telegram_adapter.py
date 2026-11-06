@@ -2627,3 +2627,18 @@ def test_a_command_given_its_argument_is_not_interrupted() -> None:
 
     assert [(c.command, c.args) for c in commands] == [("invite-agent", "@scout")]
     assert _bot(adapter).messages == []
+
+
+def test_an_agents_edited_message_keeps_its_name_at_the_head() -> None:
+    adapter = _adapter()
+
+    _run(
+        adapter.edit_agent_message(
+            str(CHAT_ID), f"{CHAT_ID}:501", "scout", "lunch moves to 1:45"
+        )
+    )
+
+    edit = _bot(adapter).edits[0]
+    assert edit["text"] == f"{SCOUT_MARK} <b>scout</b>: lunch moves to 1:45"
+    assert edit["chat_id"] == CHAT_ID
+    assert edit["message_id"] == 501

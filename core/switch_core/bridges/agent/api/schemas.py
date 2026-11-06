@@ -102,6 +102,11 @@ class SendMessageRequest(BaseModel):
     metadata: dict[str, Any] = {}
 
 
+class EditMessageRequest(BaseModel):
+    room_id: str
+    content: str
+
+
 class TypingRequest(BaseModel):
     room_id: str
     is_typing: bool
