@@ -426,3 +426,18 @@ async def test_the_owners_own_group_post_belongs_to_the_group() -> None:
     )
     await adapter.handle_event({"event": "message.any", "payload": own})
     assert [(m.channel_id, m.content) for m in got] == [(GROUP, "hello everyone")]
+
+
+async def test_a_gows_group_name_is_read_too() -> None:
+    adapter, side = make()
+    side.subjects = {}
+
+    def gows(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"JID": GROUP, "Name": "Lantern Build Night"})
+
+    adapter._http = httpx.AsyncClient(
+        base_url=adapter.config.waha_url,
+        headers={"X-Api-Key": "secret"},
+        transport=httpx.MockTransport(gows),
+    )
+    assert await adapter.bridges(GROUP) is True

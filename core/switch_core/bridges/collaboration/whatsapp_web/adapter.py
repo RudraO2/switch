@@ -510,7 +510,12 @@ class WhatsAppWebAdapter(PlatformAdapter):
             )
         except BridgeOperationError:
             return None
-        subject = (info or {}).get("subject") if isinstance(info, dict) else None
+        # WEBJS/NOWEB answer `subject`; GOWS answers whatsmeow's GroupInfo, `Name`.
+        subject = (
+            (info.get("subject") or info.get("Name") or info.get("name"))
+            if isinstance(info, dict)
+            else None
+        )
         if subject:
             self._subjects[chat_id] = str(subject)
         return subject
