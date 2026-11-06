@@ -1,6 +1,34 @@
 # Run the standalone stack with Ferri's core image:
 #   Build first: docker build -f deploy/local/ferri/Dockerfile --build-arg BASE=ghcr.io/sandbox-quantum/dev/switch-core:${SWITCH_VERSION} -t ferri/switch-core:local .
 #   docker compose -f deploy/local/standalone-docker-compose.yml -f deploy/local/ferri/compose.override.yml --profile collab --profile gateway --project-directory . up -d switch
+#
+# WhatsApp (the whatsapp_web platform) needs its sidecar, WAHA with the GOWS engine:
+#   docker compose -f deploy/local/standalone-docker-compose.yml -f deploy/local/ferri/compose.override.yml --profile whatsapp --project-directory . up -d waha
+# Set WAHA_API_KEY in .env first, and add waha to OUTBOUND_ALLOWED_PRIVATE_HOSTS (a
+# private address Switch may call). The whatsapp_web connection uses the same key and
+# reaches the sidecar at http://waha:3000 on the stack's network.
 services:
   switch:
     image: ferri/switch-core:local
+
+  waha:
+    image: devlikeapro/waha:latest
+    profiles: ["whatsapp"]
+    restart: unless-stopped
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: GOWS
+      WAHA_API_KEY: ${WAHA_API_KEY:?set WAHA_API_KEY in .env}
+      WHATSAPP_DOWNLOAD_MEDIA: "true"
+      WAHA_PRINT_QR: "false"
+      WAHA_DASHBOARD_ENABLED: "false"
+      WHATSAPP_SWAGGER_ENABLED: "true"
+      WAHA_LOG_LEVEL: info
+    ports:
+      - "127.0.0.1:3010:3000"
+    volumes:
+      - waha-sessions:/app/.sessions
+      - waha-media:/app/.media
+
+volumes:
+  waha-sessions:
+  waha-media:
