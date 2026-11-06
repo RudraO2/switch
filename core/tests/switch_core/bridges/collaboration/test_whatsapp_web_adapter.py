@@ -411,3 +411,18 @@ async def test_a_note_to_self_under_the_lid_is_the_me_chat() -> None:
     assert [(m.channel_id, m.channel_type, m.content) for m in got] == [
         ("100000000000001@lid", "direct", "hello ferri")
     ]
+
+
+async def test_the_owners_own_group_post_belongs_to_the_group() -> None:
+    adapter, _ = make()
+    got, _ = await collect(adapter)
+    own = message(
+        id="true_120363000000000001@g.us_AC3C_100000000000001@lid",
+        fromMe=True,
+        source="app",
+        to="100000000000001@lid",
+        participant="100000000000001@lid",
+        body="hello everyone",
+    )
+    await adapter.handle_event({"event": "message.any", "payload": own})
+    assert [(m.channel_id, m.content) for m in got] == [(GROUP, "hello everyone")]

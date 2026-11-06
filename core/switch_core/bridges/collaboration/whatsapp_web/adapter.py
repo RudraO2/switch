@@ -232,9 +232,15 @@ def chat_of(payload: dict[str, Any]) -> str:
 
     A note to self ("Message yourself") arrives as our own message with no
     recipient, under the account's own id: the sender is then the chat."""
+    sender, recipient = str(payload.get("from") or ""), str(payload.get("to") or "")
+    # In a group, the group is the chat whichever field carries it: our own
+    # group posts come from the group, addressed to our own id.
+    for side in (sender, recipient):
+        if side.endswith(_GROUP_SUFFIX):
+            return side
     if payload.get("fromMe"):
-        return str(payload.get("to") or payload.get("from") or "")
-    return str(payload.get("from") or "")
+        return recipient or sender
+    return sender
 
 
 class WhatsAppWebAdapter(PlatformAdapter):
